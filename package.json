@@ -1,0 +1,22 @@
+{
+  "name": "TattleT311",
+  "version": "1.0.0",
+  "description": "Find out requests from @pgh311 that have not been followed up on.",
+  "main": "tattlet311.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ajette/TattleT311.git"
+  },
+  "keywords": [
+    "311"
+  ],
+  "author": "ajette",
+  "license": "Beerware",
+  "bugs": {
+    "url": "https://github.com/ajette/TattleT311/issues"
+  },
+  "homepage": "https://github.com/ajette/TattleT311"
+}
