@@ -5,8 +5,6 @@ var json2csv = require('json2csv')
 var _ = require('lodash-node')
 var prompt = require('prompt')
 
-prompt.start();
-
 var twitterConfig = JSON.parse(fs.readFileSync("twitterAuth.json", {encoding: 'utf-8'}))
 
 var T = new Twit({
@@ -19,6 +17,7 @@ var T = new Twit({
 var args = process.argv.slice(2);
 if (args.length == 0) {
 	console.log("No screen names provided, proceeding to scrape all replies by 311")
+	prompt.start();
 	prompt.get([{
 	    name: 'keepGoing',
 	    required: true,
