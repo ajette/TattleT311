@@ -63,7 +63,7 @@ function userTimeline(whenDone, results, targetUser, users, maxId) {
     // don't pop user if this is part of recursive call
     if (targetUser == null) {
         targetUser = users.pop()
-        console.log("Grabbing user timeline of " + targetUser)
+        console.log("Grabbing user timeline of " + targetUser + ". Remaining user size: " + users.length)
     }
 
     if (maxId == null) {
@@ -86,6 +86,7 @@ function userTimeline(whenDone, results, targetUser, users, maxId) {
                 30000
                 );              
             }
+            return
         }
 
         var last = data[data.length - 1];
