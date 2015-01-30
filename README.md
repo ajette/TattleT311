@@ -2,7 +2,7 @@
 Find out requests from @pgh311 that have not been followed up on. A dirty script to remind me to remind 311 that requests have been unfulfilled.
 
 # What does it do?
-It pulls requests sent from 311 to the user provided on the command prompt. By default it looks at the last month and writes these requests to a CSV file.
+It pulls requests sent from 311 via twitter to the user provided on the command prompt. By default it looks at the last month and writes these requests to a CSV file.
 
 # What do I need to run it?
 node. As it uses the twitter API you will need those credentials. They should be provided in twitterAuth.json.
