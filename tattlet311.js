@@ -7,12 +7,17 @@ var prompt = require('prompt')
 
 var twitterConfig = JSON.parse(fs.readFileSync("twitterAuth.json", {encoding: 'utf-8'}))
 
-var T = new Twit({
+var auth = {
     consumer_key: twitterConfig.consumer_key,
     consumer_secret: twitterConfig.consumer_secret,
     access_token: twitterConfig.access_token,
     access_token_secret: twitterConfig.access_token_secret
-});
+}
+
+var T = new Twit(auth)
+// in theory we should be able to get around 3K according to docs, but really only ~ 200
+var countAtATime = 195
+var user311 = 'Pgh311';
 
 var args = process.argv.slice(2);
 if (args.length == 0) {
@@ -32,8 +37,6 @@ if (args.length == 0) {
 else {
     collectAllTweets({}, [user311].concat(args))
 }
-
-var user311 = 'Pgh311';
 
 // Only pay attention to requests in last month - should make this configurable
 var cutoffDate = new Date()
@@ -78,13 +81,38 @@ function userTimeline(whenDone, results, targetUser, users, maxId) {
     T.get("statuses/user_timeline", options, function(err, data, response) {
         if (err) {
             // rate limit exceeded, try again in a bit
+            // @TODO Get this working proactively so we don't ever hit the limit
             if (err.statusCode == 429) {
-                console.log("Rate limit exceeded, trying again")
-                setTimeout(function() {
-                    userTimeline(whenDone, results, targetUser, users, maxId);
-                },
-                30000
-                );              
+                console.log("Rate limit exceeded...")
+                T.get("application/rate_limit_status", {"resources": "statuses"}, function(err, data, response) {
+                    if (err) {
+                        console.log(err)
+                    }
+                    console.log(data.resources.statuses['/statuses/user_timeline'])
+                    // find out when api limit resets
+                    var epoch = (new Date).getTime() / 1000;
+                    var reset = data.resources.statuses['/statuses/user_timeline'].reset
+                    var sleepTime = reset - epoch;
+                    if (sleepTime >= 0) {
+                        console.log("Waiting on API to reset in " + sleepTime + " seconds")
+                        // this retries but doesn't seem to open up again banging on it...                    
+                        setTimeout(function() {
+                            T = new Twit(auth);
+                            userTimeline(whenDone, results, targetUser, users, maxId);
+                        },
+                        // + 10 seconds
+                        sleepTime * 1000 + 10000
+                    );                  
+                    }
+                    else {
+                        console.log("Reset " + sleepTime + " was less than 0, not sure what to do. Saving results.")
+                        whenDone(results, [])  
+                    }                
+                });                                      
+            }
+            else {
+                console.log(err)
+                return
             }
             return
         }
@@ -97,7 +125,8 @@ function userTimeline(whenDone, results, targetUser, users, maxId) {
         }
         results[targetUser] = results[targetUser].concat(data);
 
-        if (lastDate < cutoffDate) {
+        // if tweets go beyond cutoff date or there aren't enough tweets
+        if (lastDate < cutoffDate || data.length < 195) {
             // done with this user, carry on to the next ones
             whenDone(results, users);
         }
@@ -185,11 +214,10 @@ function collectAllTweets(tweets, users) {
         return
     }
 
-    // throttle this so we don't run out of api requests per 15 minutes
-    setTimeout(function() {
+    setTimeout(function() {       
         userTimeline(collectAllTweets, tweets, null, users)
     },
-    users.length > 1 ? 30000 : 0
+    1 // well, it could be throttled if you want
     );      
 }
 
