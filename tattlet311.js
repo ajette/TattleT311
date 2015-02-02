@@ -62,7 +62,8 @@ function wasTweetARequestFromTo(tweet, fromUser, toUser) {
 // pull a few times...
 // it would make sense to use search/tweets but the twitter api only returns results from last week? That's dumb
 // get all of the users timeline since we'll need to see if they replied to any of these...sigh
-function userTimeline(whenDone, results, targetUser, users, maxId) {
+function userTimeline(whenDone, results, targetUser, users, maxId) {    
+
     // don't pop user if this is part of recursive call
     if (targetUser == null) {
         targetUser = users.pop()
@@ -71,24 +72,29 @@ function userTimeline(whenDone, results, targetUser, users, maxId) {
 
     if (maxId == null) {
         // I swear this was giving me 3K when testing earlier but now seems to only allow 200, well whatever
-        var options = { screen_name: targetUser, count: 3000}
+        var options = { screen_name: targetUser, count: countAtATime}
     }
     else {
         // if we have a maxId use that to go back in a users timeline
-        var options = { screen_name: targetUser, count: 3000, max_id: maxId}
+        var options = { screen_name: targetUser, count: countAtATime, max_id: maxId}
     }
     
     T.get("statuses/user_timeline", options, function(err, data, response) {
         if (err) {
+            // 401 = status is protected and we can't view
+            if (err.statusCode == 401 || err.statusCode == 404) {
+                console.log("401/404 for user " + targetUser + ", moving on...")
+                userTimeline(whenDone, results, null, users, maxId);
+                return
+            }
             // rate limit exceeded, try again in a bit
-            // @TODO Get this working proactively so we don't ever hit the limit
-            if (err.statusCode == 429) {
+            else if (err.statusCode == 429) {
                 console.log("Rate limit exceeded...")
                 T.get("application/rate_limit_status", {"resources": "statuses"}, function(err, data, response) {
                     if (err) {
                         console.log(err)
                     }
-                    console.log(data.resources.statuses['/statuses/user_timeline'])
+                    
                     // find out when api limit resets
                     var epoch = (new Date).getTime() / 1000;
                     var reset = data.resources.statuses['/statuses/user_timeline'].reset
@@ -97,10 +103,9 @@ function userTimeline(whenDone, results, targetUser, users, maxId) {
                         console.log("Waiting on API to reset in " + sleepTime + " seconds")
                         // this retries but doesn't seem to open up again banging on it...                    
                         setTimeout(function() {
-                            T = new Twit(auth);
                             userTimeline(whenDone, results, targetUser, users, maxId);
                         },
-                        // + 10 seconds
+                        // + 1 second buffer                        
                         sleepTime * 1000 + 10000
                     );                  
                     }
