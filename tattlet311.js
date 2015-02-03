@@ -47,7 +47,7 @@ var requestIdMatch = /request\s*id#*\s*(\d+)/i;
 
 // was tweet sent from fromUser to toUser and is it a "Request ID" 
 function wasTweetARequestFromTo(tweet, fromUser, toUser) {
-    if (tweet.user.screen_name == fromUser && 
+    if (tweet.screen_name == fromUser && 
         tweet.in_reply_to_screen_name == toUser &&
         tweet.text.match(requestIdMatch)
         ) {
@@ -125,10 +125,36 @@ function userTimeline(whenDone, results, targetUser, users, maxId) {
         var last = data[data.length - 1];
         var lastDate = new Date(last.created_at);
 
+        var dataWeCareAbout = []
+
+        // only store tweets we care about
+        data.forEach(function(tweet) {
+            var tweetInfoWeCareAbout = {
+                "id": tweet.id,
+                "id_str": tweet.id_str,
+                "in_reply_to_screen_name": tweet.in_reply_to_screen_name,
+                "in_reply_to_status_id": tweet.in_reply_to_status_id,
+                "created_at": tweet.created_at,
+                // rather than store whole user...
+                "screen_name": tweet.user.screen_name,
+                "text": tweet.text
+            }
+            // if the text doesn't have 311 we don't care about it
+            if (targetUser != user311) {
+                var isATweetWith311 = new RegExp("@" + user311, "i");
+                if (tweetInfoWeCareAbout.text.match(isATweetWith311)) {
+                    dataWeCareAbout.push(tweetInfoWeCareAbout)    
+                }
+            }
+            else {
+                dataWeCareAbout.push(tweetInfoWeCareAbout)
+            }
+        });
+
         if(!(targetUser in results)) {
             results[targetUser] = []
         }
-        results[targetUser] = results[targetUser].concat(data);
+        results[targetUser] = results[targetUser].concat(dataWeCareAbout);
 
         // if tweets go beyond cutoff date or there aren't enough tweets
         if (lastDate < cutoffDate || data.length < 195) {
@@ -145,6 +171,7 @@ function userTimeline(whenDone, results, targetUser, users, maxId) {
 // find any unreplied requests that were sent fromUser to toUser
 function findUnrepliedRequestTweets(fromUser, fromTweets, toUser, toTweets) {
     var unrepliedRequests = []
+
     fromTweets.forEach(function(fromTweet) {        
         if (wasTweetARequestFromTo(fromTweet, fromUser, toUser)) {
             var found = true
@@ -197,6 +224,7 @@ function collectAllTweets(tweets, users) {
             if (user == user311) {
                 continue
             }
+            
             i++
 
             unreplied[user] = findUnrepliedRequestTweets(user311, tweets[user311], user, tweets[user])
@@ -238,6 +266,7 @@ function saveTweetsToCSV(tweets) {
             flattenedTweets = flattenedTweets.concat(tweets[property])
         }
     }
+    // @HACK Why are there some duplicate rows here?
     json2csv({data: flattenedTweets, fields: ['in_reply_to_screen_name', 'statusIDURL', 'created_at', 'text']}, function(err, csv) {
         if (err) console.log(err);
         fs.writeFile('311Output.csv', csv, function(err) {
