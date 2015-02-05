@@ -261,12 +261,23 @@ function saveTweetsToCSV(tweets) {
     }
     // all joined by user which is in theory useful, but for CSV let us store information together
     var flattenedTweets = []
+    var statusAdded = []
     for (var property in tweets) {
         if (tweets.hasOwnProperty(property)) {
-            flattenedTweets = flattenedTweets.concat(tweets[property])
+            // Total @HACK Why are there some duplicate rows here?
+            // figure why there are dupes instead of hacking around it dur
+            tweets[property].forEach(function(userTweet) {
+                if (statusAdded.indexOf(userTweet.statusIDURL) < 0) {
+                    statusAdded.push(userTweet.statusIDURL)
+                    flattenedTweets.push(userTweet)
+                    //flattenedTweets = flattenedTweets.concat(tweets[property])
+                }                
+            });
+            //flattenedTweets = flattenedTweets.concat(tweets[property])                   
         }
     }
-    // @HACK Why are there some duplicate rows here?
+
+    
     json2csv({data: flattenedTweets, fields: ['in_reply_to_screen_name', 'statusIDURL', 'created_at', 'text']}, function(err, csv) {
         if (err) console.log(err);
         fs.writeFile('311Output.csv', csv, function(err) {
